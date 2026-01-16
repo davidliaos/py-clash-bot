@@ -302,8 +302,16 @@ def end_fight_state(
         win_check_return = check_if_previous_game_was_win(emulator, logger)
 
         if win_check_return == "restart":
-            logger.log("Error 885869 Failed while checking if previous game was a win")
-            return False
+            logger.log("Win/loss check failed, attempting fast app restart instead of full emulator restart...")
+            # Try fast app restart instead of full emulator restart
+            from pyclashbot.bot.nav import restart_clash_royale_app
+            if restart_clash_royale_app(emulator, logger):
+                logger.log("App restart successful, continuing without win/loss tracking for this fight")
+                # Skip win/loss tracking for this fight but continue normally
+                return True
+            else:
+                logger.log("App restart failed, falling back to full emulator restart")
+                return False
 
         if win_check_return:
             logger.add_win()

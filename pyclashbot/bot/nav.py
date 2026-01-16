@@ -204,6 +204,64 @@ def wait_for_clash_main_menu(emulator, logger: Logger, deadspace_click=True) -> 
     return True
 
 
+def restart_clash_royale_app(emulator, logger: Logger) -> bool:
+    """Restart just the Clash Royale app without restarting the emulator.
+    
+    This is much faster than a full emulator restart (~5-10s vs 40-60s).
+    Uses force-stop + start_app to clear app state and reopen.
+    
+    Args:
+        emulator: The emulator controller (must have adb() and start_app() methods)
+        logger: Logger for status updates
+        
+    Returns:
+        bool: True if app was successfully restarted and main menu detected, False otherwise
+    """
+    clash_pkg = "com.supercell.clashroyale"
+    
+    # Check if emulator supports ADB-based app restart
+    if not hasattr(emulator, 'adb') or not hasattr(emulator, 'start_app'):
+        logger.log("Emulator doesn't support app restart, falling back to full restart")
+        return False
+    
+    logger.change_status("Restarting Clash Royale app (fast recovery)...")
+    
+    # Force stop the app
+    logger.change_status("Force-stopping Clash Royale...")
+    try:
+        emulator.adb(f"shell am force-stop {clash_pkg}")
+        interruptible_sleep(2)
+    except Exception as e:
+        logger.log(f"Failed to force-stop app: {e}")
+        return False
+    
+    # Start the app
+    logger.change_status("Reopening Clash Royale...")
+    try:
+        if not emulator.start_app(clash_pkg):
+            logger.log("Failed to start Clash Royale app")
+            return False
+    except Exception as e:
+        logger.log(f"Failed to start app: {e}")
+        return False
+    
+    interruptible_sleep(5)  # Give app time to load
+    
+    # Wait for main menu
+    logger.change_status("Waiting for Clash Royale main menu...")
+    deadline = time.time() + 60  # 1 minute timeout (faster than full restart)
+    while time.time() < deadline:
+        if check_if_on_clash_main_menu(emulator):
+            logger.change_status("Clash Royale app restarted successfully")
+            interruptible_sleep(2)
+            return True
+        interruptible_sleep(1)
+        emulator.click(35, 405)  # Click deadspace
+    
+    logger.log("Timeout waiting for main menu after app restart")
+    return False
+
+
 def check_if_on_clash_main_menu(emulator) -> bool:
     """Checks if the user is on the clash main menu.
     Returns True if on main menu, False if not.
