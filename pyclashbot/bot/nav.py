@@ -33,11 +33,18 @@ def wait_for_battle_start(emulator, logger, timeout: int = 120) -> bool:
         bool: True if battle started, False if timed out.
     """
     start_time = time.time()
+    last_log_time = 0
     while time.time() - start_time < timeout:
-        time_taken = str(time.time() - start_time)[:4]
-        logger.change_status(
-            status=f"Waiting for battle to start for {time_taken}s",
-        )
+        current_time = time.time()
+        elapsed = current_time - start_time
+        
+        # Only log every 2 seconds to reduce spam
+        if current_time - last_log_time >= 2.0:
+            time_taken = str(elapsed)[:4]
+            logger.change_status(
+                status=f"Waiting for battle to start for {time_taken}s",
+            )
+            last_log_time = current_time
 
         # NOTE: Debug screenshot saving was intentionally removed from
         # the production flow. If you need screenshots for debugging,
@@ -51,6 +58,7 @@ def wait_for_battle_start(emulator, logger, timeout: int = 120) -> bool:
             return True
 
         emulator.click(x_coord=20, y_coord=200)
+        interruptible_sleep(0.5)  # Small sleep to prevent excessive clicking
 
     return False
 
