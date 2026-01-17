@@ -291,8 +291,16 @@ def end_fight_state(
     # get to clash main after this fight
     logger.log("Getting to clash main after doing a fight")
     if get_to_main_after_fight(emulator, logger) is False:
-        logger.log("Error 69a3d69 Failed to get to clash main after a fight")
-        return False
+        logger.log("Failed to get to clash main after a fight, attempting app restart...")
+        # Try fast app restart instead of immediate full emulator restart
+        from pyclashbot.bot.nav import restart_clash_royale_app
+        if restart_clash_royale_app(emulator, logger):
+            logger.log("App restart successful after fight end failure")
+            interruptible_sleep(3)
+            # Continue with win/loss check below
+        else:
+            logger.log("App restart failed after fight end, will trigger full restart")
+            return False
 
     logger.log("Made it to clash main after doing a fight")
     interruptible_sleep(3)
